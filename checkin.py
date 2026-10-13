@@ -253,10 +253,20 @@ def cookie_warning(cookie: str) -> str:
     return ""
 
 
-def send_telegram(token: str, chat_id: str, text: str) -> None:
+def send_telegram(token: str, chat_id: str, text: str) -> str:
+    """推送 Telegram 通知，返回一句可读的状态（会写进日志和 Actions 摘要）。
+
+    刻意不静默：绿色运行不等于通知发出去了（TG 是可选功能），所以状态必须显式写出来，
+    否则"没收到通知"这种事只能靠猜。
+    """
     if not token or not chat_id:
-        print("未配置 TG_BOT_TOKEN / TG_CHAT_ID，跳过 Telegram 推送。")
-        return
+        missing = "、".join(
+            name
+            for name, value in (("TG_BOT_TOKEN", token), ("TG_CHAT_ID", chat_id))
+            if not value
+        )
+        return f"未推送：Secret 里缺少 {missing}"
+
     try:
         resp = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
@@ -268,10 +278,21 @@ def send_telegram(token: str, chat_id: str, text: str) -> None:
             },
             timeout=TIMEOUT,
         )
-        if resp.status_code != 200:
-            print(f"Telegram 推送失败：HTTP {resp.status_code} {resp.text[:200]}")
     except requests.RequestException as exc:
-        print(f"Telegram 推送失败：{exc}")
+        return f"推送失败：{type(exc).__name__}: {exc}"
+
+    try:
+        data = resp.json()
+    except ValueError:
+        return f"推送失败：HTTP {resp.status_code}，返回不是 JSON：{resp.text[:120]}"
+
+    result = data.get("result") or {}
+    if data.get("ok"):
+        return f"已推送（message_id={result.get('message_id')}）"
+    return (
+        f"推送失败：HTTP {resp.status_code} "
+        f"{data.get('description') or resp.text[:120]}"
+    )
 
 
 def write_step_summary(markdown: str) -> None:
@@ -290,6 +311,9 @@ def main() -> int:
     now = datetime.now(BEIJING).strftime("%Y-%m-%d %H:%M")
     accounts = collect_accounts()
 
+    tg_token = os.environ.get("TG_BOT_TOKEN", "")
+    tg_chat = os.environ.get("TG_CHAT_ID", "")
+
     if not accounts:
         msg = (
             "❌ <b>GLaDOS 签到未执行</b>\n"
@@ -297,9 +321,11 @@ def main() -> int:
             "里添加 <code>GLADOS_COOKIE_1</code>（或 <code>GLADOS_COOKIE</code>）。"
         )
         print(msg)
-        write_step_summary(f"## ❌ GLaDOS 签到未执行\n\n{now}（北京时间）\n\n未读到 cookie。")
-        send_telegram(
-            os.environ.get("TG_BOT_TOKEN", ""), os.environ.get("TG_CHAT_ID", ""), msg
+        tg_status = send_telegram(tg_token, tg_chat, msg)
+        print(f"Telegram 通知：{tg_status}")
+        write_step_summary(
+            f"## ❌ GLaDOS 签到未执行\n\n{now}（北京时间）\n\n"
+            f"未读到 cookie。\n\nTelegram 通知：{tg_status}\n"
         )
         return 1
 
@@ -335,24 +361,26 @@ def main() -> int:
     ok_count = total - failed
     icon = "✅" if failed == 0 else "⚠️"
 
+    tg_status = send_telegram(
+        tg_token,
+        tg_chat,
+        f"{icon} <b>GLaDOS 签到结果</b>（{now} 北京时间）\n\n{summary_text}\n\n成功 {ok_count}/{total}",
+    )
+
     print("\n===== 结果汇总 =====")
     for line in rows:
         print(line)
     print(f"成功 {ok_count}/{total}")
+    print(f"Telegram 通知：{tg_status}")
 
     write_step_summary(
         f"## {icon} GLaDOS 签到结果（{now} 北京时间）\n\n"
         + "\n".join(f"- {line}" for line in rows)
-        + f"\n\n成功 **{ok_count}/{total}**\n"
-    )
-
-    send_telegram(
-        os.environ.get("TG_BOT_TOKEN", ""),
-        os.environ.get("TG_CHAT_ID", ""),
-        f"{icon} <b>GLaDOS 签到结果</b>（{now} 北京时间）\n\n{summary_text}\n\n成功 {ok_count}/{total}",
+        + f"\n\n成功 **{ok_count}/{total}**\n\nTelegram 通知：{tg_status}\n"
     )
 
     return 1 if failed else 0
+
 
 
 if __name__ == "__main__":
