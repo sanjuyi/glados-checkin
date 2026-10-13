@@ -115,6 +115,7 @@ python .\checkin.py
 | 不可达域名会拖时间 | 会一直卡在超时上 | 连接超时 8 秒、失败即跳过，不阻塞 |
 | 60 天没活动定时任务被 GitHub 自动禁用 | 无对策 | 每月 1 号一个「保活」空提交 |
 | 依赖 `python-dotenv` | `glados.py` 需要它读 `.env` | 只依赖 `requests`，`.env` 走 `.gitignore` 排除 |
+| Telegram 通知静默失败 | 原项目推送失败（或没配）只打一行日志，不看运行页面根本发现不了 | 每次运行都把 Telegram 状态（已推送 / 未推送缺哪个变量 / 失败原因）写进日志和 Actions 摘要 |
 
 > **实测依据**（本机真实请求，用的是脚本自己那套请求头）：
 > - 会话无效（被踢下线、漏复制 `koa:sess.sig`、或值是伪造的）时，`POST /api/user/checkin` 与 `GET /api/user/status`
@@ -135,7 +136,7 @@ python .\checkin.py
 | 日志里 `glados.network: 连接失败` | 该域名可能被 DNS 污染，脚本会自动换下一个域名；只要有一个域名成功就没问题 |
 | 日志里「cookie 里没有 koa:sess.sig」 | 复制 cookie 时只抄了 `koa:sess`，漏了 `koa:sess.sig`；两条值都要复制，用 `; ` 连成一行 |
 | 提示「今日已签到（重复签到，正常）」 | 正常，说明当天额度已经拿到 |
-| Telegram 没收到消息 | 没配 `TG_BOT_TOKEN` / `TG_CHAT_ID`；或你从没给这个 bot 发过消息（Telegram 不允许 bot 主动开新会话），先给 bot 发一句话 |
+| Telegram 没收到消息 | **先看运行页面的 Summary**：现在每次运行都会写明「Telegram 通知：已推送（message_id=…）」/「未推送：Secret 里缺少 TG_BOT_TOKEN / TG_CHAT_ID」/ 具体失败原因。另外 Telegram 不允许 bot 主动开新会话，得先给 bot 发过一条消息（如 `/start`） |
 | 定时任务某天没跑 | GitHub 的 cron 高峰期会延迟几分钟到几十分钟；另外仓库 60 天完全无活动会被自动停用（点邮件里的 Re-enable，或依赖每月保活提交） |
 | 保活步骤报权限错误 | Settings → Actions → General → Workflow permissions 选 **Read and write permissions**；不影响签到本身 |
 
