@@ -1,0 +1,10 @@
+# 本地测试用的环境变量文件，绝对不能提交（里面是等于账号凭证的 cookie）
+.env
+*.env
+!.env.example
+
+# Python 运行时产物
+__pycache__/
+*.py[cod]
+.venv/
+venv/
