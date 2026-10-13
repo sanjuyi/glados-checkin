@@ -39,7 +39,7 @@ cookie 等于账号凭证，**只能放进 GitHub Secrets，不要提交到仓�
    koa:sess=<koa:sess 的 Value>; koa:sess.sig=<koa:sess.sig 的 Value>
    ```
 
-   ⚠️ **两条都要**。只复制 `koa:sess` 会一直签到失败——这是最常见的翻车原因（脚本会提示「cookie 只复制了一半」）。
+   ⚠️ **两条都要**。只复制第一条（`koa:sess` 或 `gld:sess`）会一直签到失败——这是最常见的翻车原因（脚本会提示「cookie 只复制了一半」）。
 
 > 名称说明：`glados.rocks` 用 `koa:sess` + `koa:sess.sig`；`glados.network` 等其它域名历史上出现过
 > `gld:sess` + `gld:sess.sig`。方法 A 不管叫什么名字都能一次拿全，所以更推荐。
@@ -134,7 +134,7 @@ python .\checkin.py
 | 工作流红色，日志「Cookie 无效或已过期」 | cookie 过期，重新复制更新 Secret |
 | 工作流红色，日志「未找到任何 cookie」 | Secret 名字拼错，或编号从 `_2` 开始导致读取中断；确认有 `GLADOS_COOKIE_1` |
 | 日志里 `glados.network: 连接失败` | 该域名可能被 DNS 污染，脚本会自动换下一个域名；只要有一个域名成功就没问题 |
-| 日志里「cookie 里没有 koa:sess.sig」 | 复制 cookie 时只抄了 `koa:sess`，漏了 `koa:sess.sig`；两条值都要复制，用 `; ` 连成一行 |
+| 日志里「cookie 只复制了一半：缺少带签名的那条」 | 只复制了 `koa:sess` / `gld:sess`，漏了带签名的 `*.sig` 那条；两条的值都要，用 `; ` 连成一行 |
 | 提示「今日已签到（重复签到，正常）」 | 正常，说明当天额度已经拿到 |
 | Telegram 没收到消息 | **先看运行页面的 Summary**：现在每次运行都会写明「Telegram 通知：已推送（message_id=…）」/「未推送：Secret 里缺少 TG_BOT_TOKEN / TG_CHAT_ID」/ 具体失败原因。另外 Telegram 不允许 bot 主动开新会话，得先给 bot 发过一条消息（如 `/start`） |
 | 定时任务某天没跑 | GitHub 的 cron 高峰期会延迟几分钟到几十分钟；另外仓库 60 天完全无活动会被自动停用（点邮件里的 Re-enable，或依赖每月保活提交） |
