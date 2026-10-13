@@ -12,23 +12,39 @@
 ### 第 1 步：拿到 cookie
 
 cookie 等于账号凭证，**只能放进 GitHub Secrets，不要提交到仓库、不要发到聊天里**。
+先确保浏览器里**已经登录** glados.rocks（没登录取的 cookie 是无效的）。
 
-1. 浏览器登录 https://glados.rocks ，进入控制台。
-2. 按 `F12` 打开开发者工具。
-3. 切到 **Application**（中文版叫「应用程序」）标签 → 左侧 **Storage → Cookies → https://glados.rocks**。
-4. 找到这两条，复制它们的 Value：
+**方法 A（推荐，最不容易出错）：整行复制 Cookie 请求头**
+
+1. 在 glados.rocks 的**签到页面**（`/console/checkin`）按 `F12` 打开开发者工具。
+2. 切到 **Network**（中文版「网络」）标签，按 `F5` 刷新一次页面。
+3. 在请求列表里点任意一个 **`api/user/...`** 请求（例如 `status` 或 `checkin`）。
+4. 右侧 **Headers → Request Headers**，找到 **`Cookie:`** 那一行，把**整行的值**复制下来：
+
+   ```
+   koa:sess=xxxxxxx...; koa:sess.sig=yyyyyyy...
+   ```
+
+   这样不会漏字段，也不用自己拼。脚本会自动去掉行首可能带上的 `Cookie:` 字样和多余空格。
+
+**方法 B：从 Cookies 面板里逐条复制**
+
+1. `F12` → **Application / 应用程序** → 左侧 **Storage → Cookies → https://glados.rocks**。
+2. 在过滤框里输入 `koa`，会看到两条：
    - `koa:sess`
    - `koa:sess.sig`
-5. 拼成一行，中间用 `; ` 分隔：
+3. 分别双击它们的 **Value** 列复制，然后按 `名字=值` 拼成一行，中间用 `; ` 分隔：
 
    ```
-   koa:sess=<koa:sess 那条的 Value>; koa:sess.sig=<koa:sess.sig 那条的 Value>
+   koa:sess=<koa:sess 的 Value>; koa:sess.sig=<koa:sess.sig 的 Value>
    ```
 
-   > 另一种更快的办法：F12 → **Network** → 刷新页面 → 随便点一个 `api/user/...` 请求 →
-   > **Request Headers** 里的 `Cookie:` 那一整行，整行复制即可（脚本会自动去掉 `Cookie:` 前缀）。
+   ⚠️ **两条都要**。只复制 `koa:sess` 会一直签到失败——这是最常见的翻车原因（脚本会提示「cookie 只复制了一半」）。
 
-**最好在签到页附近复制**：cookie 是有有效期的，失效后签到会失败（工作流会变红提醒你），到时重新复制一次、更新 Secret 就行。
+> 名称说明：`glados.rocks` 用 `koa:sess` + `koa:sess.sig`；`glados.network` 等其它域名历史上出现过
+> `gld:sess` + `gld:sess.sig`。方法 A 不管叫什么名字都能一次拿全，所以更推荐。
+
+cookie 是有有效期的，失效后工作流会变红提醒你，到时重新复制一次、更新 Secret 即可。
 
 ### 第 2 步：建仓库并推上去
 

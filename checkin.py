@@ -225,17 +225,30 @@ def collect_accounts() -> list:
 
 
 def cookie_warning(cookie: str) -> str:
-    """本地预检：cookie 少字段是实际最常见的失败原因，提前给人话提示。
+    """本地预检：cookie 抄漏了是最常见的失败原因，提前给人话提示。
 
     实测行为（本机真实请求，用的是脚本自己那套请求头）：
-        * 只带 koa:sess、不带 koa:sess.sig        -> HTTP 200 + {"code": -2, "message": "没有权限"}，签到必然失败
-        * 两条都带但值是伪造的（等价于被踢下线）  -> 完全相同的返回
+        * 只带 koa:sess、不带签名那条 -> HTTP 200 + {"code": -2, "message": "没有权限"}，签到必然失败
+        * 两条都带但值是伪造的（等价于被踢下线） -> 完全相同的返回
     所以这条提示只是提前告诉你抄漏了哪一段，成败判定仍然以服务端返回为准。
+
+    名字不写死：glados.rocks 用 koa:sess / koa:sess.sig，其它域名出现过 gld:sess / gld:sess.sig。
     """
-    if "koa:sess.sig" not in cookie:
+    if "=" not in cookie:
         return (
-            "cookie 里没有 koa:sess.sig：请把 koa:sess 和 koa:sess.sig 两条的值都复制下来，"
-            "用 '; ' 连成一行（只复制 koa:sess 会一直签到失败）"
+            "这看起来不是 cookie（没有 name=value 形式）。请复制浏览器 Network 里的 Cookie 请求头整行，"
+            "或在 Application → Cookies 里把名字和值按 name=value 拼好"
+        )
+
+    names = [
+        part.split("=", 1)[0].strip().lower()
+        for part in cookie.split(";")
+        if "=" in part
+    ]
+    if names and not any(name.endswith(".sig") for name in names):
+        return (
+            "cookie 只复制了一半：缺少带签名的那条（glados.rocks 上是 koa:sess.sig，"
+            "glados.network 上是 gld:sess.sig）。两条的值都要，用 '; ' 连成一行"
         )
     return ""
 
