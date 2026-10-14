@@ -3,7 +3,7 @@
 用 GitHub Actions 每天自动给 [GLaDOS](https://glados.rocks) 签到，电脑不用开机，不用装 Python。
 参考项目：[kingkare/GLaDOS](https://github.com/kingkare/GLaDOS)（本仓库在其逻辑上修掉了几个会误判的问题，见文末「和原项目有什么区别」）。
 
-签到时间：**每天 UTC 01:00 = 北京时间 09:00**。结果会写在 Actions 运行页面的 Summary 里（可选推 Telegram）。
+签到时间：**每天 UTC 01:23 = 北京时间 09:23**（刻意避开整点，见下方排查表里的延迟说明）。结果会写在 Actions 运行页面的 Summary 里（可选推 Telegram）。
 
 ---
 
@@ -84,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File .\push-to-github.ps1 -Visibility privat
    - 绿色 ✅ + Summary 里显示「签到成功，获得 N 积分」或「今日已签到」= 成功。
    - 红色 ❌ = 看日志里的中文说明（一般是 cookie 失效）。
 
-之后不用再管，每天 09:00（北京时间）自动跑。
+之后不用再管，每天 09:23（北京时间）左右自动跑（可能延迟，见排查表）。判断"今天到底签上没签上"的可靠办法有两个：① Telegram 收到通知；② 打开 Actions 看当天那条 `schedule` 运行是否绿色。
 
 ---
 
@@ -137,7 +137,7 @@ python .\checkin.py
 | 日志里「cookie 只复制了一半：缺少带签名的那条」 | 只复制了 `koa:sess` / `gld:sess`，漏了带签名的 `*.sig` 那条；两条的值都要，用 `; ` 连成一行 |
 | 提示「今日已签到（重复签到，正常）」 | 正常，说明当天额度已经拿到 |
 | Telegram 没收到消息 | **先看运行页面的 Summary**：现在每次运行都会写明「Telegram 通知：已推送（message_id=…）」/「未推送：Secret 里缺少 TG_BOT_TOKEN / TG_CHAT_ID」/ 具体失败原因。另外 Telegram 不允许 bot 主动开新会话，得先给 bot 发过一条消息（如 `/start`） |
-| 定时任务某天没跑 | GitHub 的 cron 高峰期会延迟几分钟到几十分钟；另外仓库 60 天完全无活动会被自动停用（点邮件里的 Re-enable，或依赖每月保活提交） |
+| 定时任务迟到或某天没跑 | GitHub 的调度器在**整点最拥堵**，延迟从几分钟到几小时都有（本项目实测被延迟过 **4 小时 48 分**，所以 cron 已挪到 `:23`）；偶尔会整次跳过，但下午/晚上还会补跑。另外仓库 60 天完全无活动会被自动停用（点邮件里的 Re-enable，或依赖每月保活提交）。**想确认当天有没有签上**：看 Actions 里当天那条 `schedule` 运行，或用「本机跑」那一节手动执行一次——服务端会回「今日已签到（重复签到，正常）」，那就说明当天额度已经拿到了 |
 | 保活步骤报权限错误 | Settings → Actions → General → Workflow permissions 选 **Read and write permissions**；不影响签到本身 |
 
 ---
